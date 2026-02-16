@@ -141,7 +141,7 @@ module tt_um_CatsAreFluffy (
 
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      instr_string <= "                ";
+      instr_string <= "         ";
     end else if (state == FETCH3) begin
       instr_string <= {mnemonic, " ", modename, " ", immediate_string};
     end
