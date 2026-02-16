@@ -54,6 +54,7 @@ module tt_um_CatsAreFluffy (
   wire [3:0] immediate = instr_3;
 
   // Control lines
+  wire jump_instr = !row[2] && !row[1];
   wire store_instr = row[1] && row[0] && !column[1];
 
   wire in2_from_memory = !mode[2];
@@ -103,6 +104,8 @@ module tt_um_CatsAreFluffy (
         FETCH3: begin
           if (store_instr) begin
             state <= STORE;
+          end else if (jump_instr) begin
+            state <= FETCH1;
           end else if (in2_from_memory) begin
             state <= LOAD;
           end else begin
@@ -120,7 +123,8 @@ module tt_um_CatsAreFluffy (
     if (!rst_n) begin
       program_counter <= 0;
     end else if (state == FETCH3) begin
-      program_counter <= program_counter + 1;
+      if (jump_instr) program_counter <= {4'b0000, uio_in[3:0], 2'b00};
+      else            program_counter <= program_counter + 1;
     end
   end
 
@@ -179,7 +183,7 @@ module tt_um_CatsAreFluffy (
   // Nice things for simulation
   wire [32*4*8-1:0] mnemonics = {
     "    ", "    ", "    ", "    ",
-    "    ", "    ", "    ", "    ",
+    " jmp", "    ", "    ", "    ",
     " ldx", " ldy", "    ", "    ",
     " stx", " sty", "    ", "    ",
     "    ", "    ", "    ", "    ",

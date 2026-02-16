@@ -6,6 +6,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, NextTimeStep, Timer
 
 # Instructions
+jmp = 0b001_00
 ldx = 0b010_00
 ldy = 0b010_01
 stx = 0b011_00
@@ -39,8 +40,6 @@ async def cycle(dut, rom=[], ram=[]):
         await Timer(50, unit="ns")
         if dut.uio_out.value[6] == 0:
             ram[address] = int(dut.uio_out.value[3:0])
-        dut._log.info("RAM")
-        dut._log.info("%s %s %s", ram, address, ram[address])
         dut.uio_in.value = ram[address]
     else:
         address = int(dut.uo_out.value) * 16 + (int(dut.uio_out.value) >> 4)
@@ -110,3 +109,16 @@ async def test_project(dut):
     assert ram[0] == 5
     for i in range(-1+4+2): await cycle(dut, rom, ram)
     assert dut.user_project.reg_x.value == 5
+
+    dut._log.info("Test jump instruction")
+    rom = assemble([(lda, zi, 1), (sta, zi, 0), (lda, zi, 2), (sta, zi, 1), (jmp, zi, 0), (0, 0, 0)])
+    ram = [3, 8, 4]
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 1)
+    dut.rst_n.value = 1
+    for i in range(4+4+4+4+3+1): await cycle(dut, rom, ram)
+    assert ram == [8, 4, 4]
+    assert dut.user_project.program_counter.value == 0
+    for i in range(-1+4+4+4+4+3+1): await cycle(dut, rom, ram)
+    assert ram == [4, 4, 4]
+    assert dut.user_project.program_counter.value == 0
