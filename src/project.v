@@ -204,14 +204,25 @@ module tt_um_CatsAreFluffy (
 
   reg [(4+1+2+1+1)*8-1:0] instr_string;
 
-  always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      instr_string <= "         ";
-    end else if (state == FETCH3) begin
-      instr_string <= {mnemonic, " ", modename, " ", immediate_string};
+  always_latch begin
+    if (state == FETCH3) begin
+      instr_string = {mnemonic, " ", modename, " ", immediate_string};
     end
   end
 
-  wire _unused_sim_only = &{instr_string};
+  reg [6*8-1:0] state_string;
+
+  always @(*) begin
+    case (state)
+      FETCH1:  state_string = "FETCH1";
+      FETCH2:  state_string = "FETCH2";
+      FETCH3:  state_string = "FETCH3";
+      LOAD:    state_string = "LOAD  ";
+      STORE:   state_string = "STORE ";
+      default: state_string = "??????";
+    endcase
+  end
+
+  wire _unused_sim_only = &{instr_string, state_string};
 
 endmodule
