@@ -224,7 +224,24 @@ module tt_um_CatsAreFluffy (
       endcase
     end
 
-    wire _unused_sim_only = &{instr_string, state_string};
+    reg instr_last_cycle;
+    reg instr_done;
+
+    always_comb begin
+      if (jump_instr)       instr_last_cycle = state == FETCH3;
+      else if (store_instr) instr_last_cycle = state == STORE;
+      else                  instr_last_cycle = state == FETCH1;
+    end
+
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) begin
+        instr_done <= 0;
+      end else begin
+        instr_done <= instr_last_cycle;
+      end
+    end
+
+    wire _unused_sim_only = &{instr_string, state_string, instr_done};
   `endif
 
 endmodule

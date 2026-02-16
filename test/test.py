@@ -48,6 +48,14 @@ async def cycle(dut, rom=[], ram=[]):
         dut.uio_in.value = rom[address]
     await ClockCycles(dut.clk, 1)
 
+async def next_instruction(dut, rom=[], ram=[]):
+    await cycle(dut, rom, ram)
+    cycles = 1
+    while dut.user_project.instr_done.value == 0:
+        await cycle(dut, rom, ram)
+        cycles += 1
+    return cycles
+
 @cocotb.test()
 async def test_project(dut):
     dut._log.info("Start")
@@ -81,11 +89,11 @@ async def test_project(dut):
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 1)
     dut.rst_n.value = 1
-    for i in range(5): await cycle(dut, rom)
+    await next_instruction(dut, rom)
     assert dut.user_project.reg_a.value == 1
-    for i in range(3): await cycle(dut, rom)
+    await next_instruction(dut, rom)
     assert dut.user_project.reg_x.value == 2
-    for i in range(3): await cycle(dut, rom)
+    await next_instruction(dut, rom)
     assert dut.user_project.reg_y.value == 3
 
     dut._log.info("Test load from memory instructions")
@@ -94,9 +102,9 @@ async def test_project(dut):
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 1)
     dut.rst_n.value = 1
-    for i in range(6): await cycle(dut, rom, ram)
+    await next_instruction(dut, rom, ram)
     assert dut.user_project.reg_y.value == 4
-    for i in range(4): await cycle(dut, rom, ram)
+    await next_instruction(dut, rom, ram)
     assert dut.user_project.reg_x.value == 2
 
     dut._log.info("Test store to memory instructions")
@@ -105,9 +113,9 @@ async def test_project(dut):
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 1)
     dut.rst_n.value = 1
-    for i in range(3+4+1): await cycle(dut, rom, ram)
+    for i in range(2): await next_instruction(dut, rom, ram)
     assert ram[0] == 5
-    for i in range(-1+4+2): await cycle(dut, rom, ram)
+    await next_instruction(dut, rom, ram)
     assert dut.user_project.reg_x.value == 5
 
     dut._log.info("Test jump instruction")
@@ -116,9 +124,9 @@ async def test_project(dut):
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 1)
     dut.rst_n.value = 1
-    for i in range(4+4+4+4+3+1): await cycle(dut, rom, ram)
+    for i in range(5): await next_instruction(dut, rom, ram)
     assert ram == [8, 4, 4]
     assert dut.user_project.program_counter.value == 0
-    for i in range(-1+4+4+4+4+3+1): await cycle(dut, rom, ram)
+    for i in range(5): await next_instruction(dut, rom, ram)
     assert ram == [4, 4, 4]
     assert dut.user_project.program_counter.value == 0
