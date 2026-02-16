@@ -33,24 +33,24 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: "ROM addr[11]/RAM addr[7]"
-  uo[1]: "ROM addr[10]/RAM addr[6]"
-  uo[2]: "ROM addr[9]/RAM addr[5]"
-  uo[3]: "ROM addr[8]/RAM addr[4]"
-  uo[4]: "ROM addr[7]/RAM addr[3]"
-  uo[5]: "ROM addr[6]/RAM addr[2]"
-  uo[6]: "ROM addr[5]/RAM addr[1]"
-  uo[7]: "ROM addr[4]/RAM addr[0]"
+  uo[0]: "ROM addr[4]/RAM addr[0]"
+  uo[1]: "ROM addr[5]/RAM addr[1]"
+  uo[2]: "ROM addr[6]/RAM addr[2]"
+  uo[3]: "ROM addr[7]/RAM addr[3]"
+  uo[4]: "ROM addr[8]/RAM addr[4]"
+  uo[5]: "ROM addr[9]/RAM addr[5]"
+  uo[6]: "ROM addr[10]/RAM addr[6]"
+  uo[7]: "ROM addr[11]/RAM addr[7]"
 
   # Bidirectional pins
-  uio[0]: "ROM addr[3]"
-  uio[1]: "ROM addr[2]/RAM r/~w"
-  uio[2]: "ROM addr[1]/RAM enable"
-  uio[3]: "ROM addr[0]/RAM enable"
-  uio[4]: "data[3]"
-  uio[5]: "data[2]"
-  uio[6]: "data[1]"
-  uio[7]: "data[0]"
+  uio[0]: "data[0]"
+  uio[1]: "data[1]"
+  uio[2]: "data[2]"
+  uio[3]: "data[3]"
+  uio[4]: "ROM addr[0]/RAM enable"
+  uio[5]: "ROM addr[1]/RAM enable"
+  uio[6]: "ROM addr[2]/RAM r/~w"
+  uio[7]: "ROM addr[3]"
 
 # Do not change!
 yaml_version: 6

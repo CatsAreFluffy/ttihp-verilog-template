@@ -9,11 +9,11 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+This is an implementation of a simple 4 bit CPU.
 
 ## How to test
 
-Explain how to use your project
+The output and IO pins are used for the CPU's memory bus. uio[3:0] are used for data. If ui[5:4] isn't 3, then {uo, ui[7:4]} is a ROM address. Otherwise, uo is a RAM address, and ui[4] is low when writing and high when reading.
 
 ## External hardware
 
