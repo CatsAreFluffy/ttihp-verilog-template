@@ -24,14 +24,14 @@ module tt_um_CatsAreFluffy (
   localparam FETCH1_BIT = 0;
   localparam FETCH2_BIT = 1;
   localparam FETCH3_BIT = 2;
-  localparam LOAD_BIT = 3;
-  localparam STORE_BIT = 4;
+  localparam LOAD_BIT   = 3;
+  localparam STORE_BIT  = 4;
 
   localparam FETCH1 = 1 << FETCH1_BIT;
   localparam FETCH2 = 1 << FETCH2_BIT;
   localparam FETCH3 = 1 << FETCH3_BIT;
-  localparam LOAD = 1 << LOAD_BIT;
-  localparam STORE = 1 << STORE_BIT;
+  localparam LOAD   = 1 << LOAD_BIT;
+  localparam STORE  = 1 << STORE_BIT;
 
   (* onehot *)
   reg [4:0] state;
@@ -112,7 +112,7 @@ module tt_um_CatsAreFluffy (
             state <= FETCH1;
           end
         end
-        LOAD: state <= FETCH1;
+        // LOAD and STORE
         default: state <= FETCH1;
       endcase
     end
@@ -158,15 +158,15 @@ module tt_um_CatsAreFluffy (
 
   // Logic for alu_in1
   always_comb begin
-    if (row[2]) alu_in1 = reg_a;
+    if (row[2])        alu_in1 = reg_a;
     else if(column[0]) alu_in1 = reg_y;
-    else alu_in1 = reg_x;
+    else               alu_in1 = reg_x;
   end
 
   // Logic for alu_in2
   always_comb begin
     case (mode)
-      3'b100: alu_in2 = immediate;
+      3'b100:  alu_in2 = immediate;
       default: alu_in2 = load_buffer;
     endcase
   end
