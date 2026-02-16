@@ -181,48 +181,50 @@ module tt_um_CatsAreFluffy (
   end
 
   // Nice things for simulation
-  wire [32*4*8-1:0] mnemonics = {
-    "    ", "    ", "    ", "    ",
-    " jmp", "    ", "    ", "    ",
-    " ldx", " ldy", "    ", "    ",
-    " stx", " sty", "    ", "    ",
-    "    ", "    ", "    ", "    ",
-    "    ", "    ", "    ", "    ",
-    " lda", "    ", "    ", "    ",
-    " sta", "    ", "    ", "    "
-  };
+  `ifndef SYNTHESIS
+    wire [32*4*8-1:0] mnemonics = {
+      "    ", "    ", "    ", "    ",
+      " jmp", "    ", "    ", "    ",
+      " ldx", " ldy", "    ", "    ",
+      " stx", " sty", "    ", "    ",
+      "    ", "    ", "    ", "    ",
+      "    ", "    ", "    ", "    ",
+      " lda", "    ", "    ", "    ",
+      " sta", "    ", "    ", "    "
+    };
 
-  wire [8*2*8-1:0] modenames = {
-    "zi", "  ", "  ", "  ", "im", "  ", "  ", "  "
-  };
+    wire [8*2*8-1:0] modenames = {
+      "zi", "  ", "  ", "  ", "im", "  ", "  ", "  "
+    };
 
-  wire [31:0] mnemonic = 32'(mnemonics >> (31 - {row, column})*32);
+    wire [31:0] mnemonic = 32'(mnemonics >> (31 - {row, column})*32);
 
-  wire [15:0] modename = 16'(modenames >> (7 - 5'(mode))*16);
+    wire [15:0] modename = 16'(modenames >> (7 - 5'(mode))*16);
 
-  wire [7:0] immediate_string = uio_in[3:0] < 10 ? "0" + 8'(uio_in[3:0]) : "a" + 8'(uio_in[3:0]) - 10;
+    wire [7:0] immediate_string = uio_in[3:0] < 10 ? "0" + 8'(uio_in[3:0]) : "a" + 8'(uio_in[3:0]) - 10;
 
-  reg [(4+1+2+1+1)*8-1:0] instr_string;
+    reg [(4+1+2+1+1)*8-1:0] instr_string;
 
-  always_latch begin
-    if (state == FETCH3) begin
-      instr_string = {mnemonic, " ", modename, " ", immediate_string};
+    always_latch begin
+      if (state == FETCH3) begin
+        instr_string = {mnemonic, " ", modename, " ", immediate_string};
+      end
     end
-  end
 
-  reg [6*8-1:0] state_string;
+    reg [6*8-1:0] state_string;
 
-  always_comb begin
-    case (state)
-      FETCH1:  state_string = "FETCH1";
-      FETCH2:  state_string = "FETCH2";
-      FETCH3:  state_string = "FETCH3";
-      LOAD:    state_string = "LOAD  ";
-      STORE:   state_string = "STORE ";
-      default: state_string = "??????";
-    endcase
-  end
+    always_comb begin
+      case (state)
+        FETCH1:  state_string = "FETCH1";
+        FETCH2:  state_string = "FETCH2";
+        FETCH3:  state_string = "FETCH3";
+        LOAD:    state_string = "LOAD  ";
+        STORE:   state_string = "STORE ";
+        default: state_string = "??????";
+      endcase
+    end
 
-  wire _unused_sim_only = &{instr_string, state_string};
+    wire _unused_sim_only = &{instr_string, state_string};
+  `endif
 
 endmodule
