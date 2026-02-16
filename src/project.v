@@ -113,6 +113,40 @@ module tt_um_CatsAreFluffy (
   assign uio_out[3:0] = 0;
   assign uio_oe = 8'b11110000;
 
-  wire _unused2 = &{instr_1, instr_2, instr_3};
+  wire _unused2 = &{reg_a, reg_x, reg_y};
+
+  // Nice things for simulation
+  wire [32*4*8-1:0] mnemonics = {
+    "    ", "    ", "    ", "    ",
+    "    ", "    ", "    ", "    ",
+    " ldx", " ldy", "    ", "    ",
+    "    ", "    ", "    ", "    ",
+    "    ", "    ", "    ", "    ",
+    "    ", "    ", "    ", "    ",
+    " lda", "    ", "    ", "    ",
+    "    ", "    ", "    ", "    "
+  };
+
+  wire [8*2*8-1:0] modenames = {
+    "  ", "  ", "  ", "  ", "im", "  ", "  ", "  "
+  };
+
+  wire [31:0] mnemonic = 32'(mnemonics >> (31 - {row, column})*32);
+
+  wire [15:0] modename = 16'(modenames >> (7 - 5'(mode))*16);
+
+  wire [7:0] immediate_string = uio_in[3:0] < 10 ? "0" + 8'(uio_in[3:0]) : "a" + 8'(uio_in[3:0]) - 10;
+
+  reg [(4+1+2+1+1)*8-1:0] instr_string;
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      instr_string <= "                ";
+    end else if (state == FETCH3) begin
+      instr_string <= {mnemonic, " ", modename, " ", immediate_string};
+    end
+  end
+
+  wire _unused_sim_only = &{instr_string};
 
 endmodule
