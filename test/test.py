@@ -15,6 +15,9 @@ lda = 0b110_00
 sta = 0b111_00
 # Addressing modes
 zi = 0b000
+ix = 0b001
+yi = 0b010
+yx = 0b011
 im = 0b100
 
 def assemble(instructions):
@@ -130,3 +133,19 @@ async def test_project(dut):
     for i in range(5): await next_instruction(dut, rom, ram)
     assert ram == [4, 4, 4]
     assert dut.user_project.program_counter.value == 0
+
+    dut._log.info("Test indexed addressing")
+    rom = assemble([(ldx, im, 1), (ldy, im, 2), (lda, ix, 8), (lda, yi, 8), (lda, yx, 8), (0, 0, 0)])
+    ram = [0]*256
+    ram[0x81] = 1
+    ram[0x28] = 2
+    ram[0x21] = 3
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 1)
+    dut.rst_n.value = 1
+    for i in range(3): await next_instruction(dut, rom, ram)
+    assert dut.user_project.reg_a.value == 1
+    await next_instruction(dut, rom, ram)
+    assert dut.user_project.reg_a.value == 2
+    await next_instruction(dut, rom, ram)
+    assert dut.user_project.reg_a.value == 3

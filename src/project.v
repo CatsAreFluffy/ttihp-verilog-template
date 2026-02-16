@@ -65,6 +65,8 @@ module tt_um_CatsAreFluffy (
   wire set_x = !row[2] && !row[0] && !column[0];
   wire set_y = !row[2] && !row[0] && column[0];
 
+  reg [7:0] mem_address;
+
   reg [3:0] alu_in1;
   reg [3:0] alu_in2;
 
@@ -74,12 +76,12 @@ module tt_um_CatsAreFluffy (
   always_comb begin
     case (state)
       LOAD: begin
-        uo_out = 8'(immediate);
+        uo_out = mem_address;
         uio_out = 8'b01110000;
         uio_oe = 8'b11110000;
       end
       STORE: begin
-        uo_out = 8'(immediate);
+        uo_out = mem_address;
         uio_out = {4'b0011, alu_in1};
         uio_oe = 8'b11111111;
       end
@@ -124,7 +126,7 @@ module tt_um_CatsAreFluffy (
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n)               program_counter <= 0;
     else if (state == FETCH3) program_counter <= program_counter + 1;
-    else if (state == JUMP)   program_counter <= {4'b0000, uio_in[3:0], 2'b00};
+    else if (state == JUMP)   program_counter <= {mem_address, 2'b00};
   end
 
   // Update logic for registers
@@ -153,6 +155,16 @@ module tt_um_CatsAreFluffy (
         FETCH3: instr_3 <= uio_in[3:0];
       endcase
     end
+  end
+
+  // Logic for mem_address
+  always_comb begin
+    case (mode[1:0])
+      2'b00: mem_address = {4'b0000,   immediate};
+      2'b01: mem_address = {immediate, reg_x};
+      2'b10: mem_address = {reg_y,     immediate};
+      2'b11: mem_address = {reg_y,     reg_x};
+    endcase
   end
 
   // Logic for alu_in1
@@ -193,7 +205,7 @@ module tt_um_CatsAreFluffy (
     };
 
     wire [8*2*8-1:0] modenames = {
-      "zi", "  ", "  ", "  ", "im", "  ", "  ", "  "
+      "zi", "ix", "yi", "yx", "im", "  ", "  ", "  "
     };
 
     wire [31:0] mnemonic = 32'(mnemonics >> (31 - {row, column})*32);
