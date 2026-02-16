@@ -34,9 +34,25 @@ module tt_um_CatsAreFluffy (
 
   reg [9:0] program_counter;
 
+  // CPU registers
+  reg [3:0] reg_a;
+  reg [3:0] reg_x;
+  reg [3:0] reg_y;
+
   reg [3:0] instr_1;
   reg [3:0] instr_2;
   reg [3:0] instr_3;
+
+  // Instruction fields
+  wire [2:0] mode = instr_1[2:0];
+  wire [1:0] column = {instr_2[0], instr_1[3]};
+  wire [2:0] row = instr_2[3:1];
+  wire [3:0] immediate = instr_3;
+
+  // Control lines
+  wire set_a = row[2];
+  wire set_x = !row[2] && !row[0] && !column[0];
+  wire set_y = !row[2] && !row[0] && column[0];
 
   // Update logic for state
   always @(posedge clk or negedge rst_n) begin
@@ -58,6 +74,19 @@ module tt_um_CatsAreFluffy (
       program_counter <= 0;
     end else if (state == FETCH3) begin
       program_counter <= program_counter + 1;
+    end
+  end
+
+  // Update logic for registers
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      reg_a <= 0;
+      reg_x <= 0;
+      reg_y <= 0;
+    end else if (state == FETCH1) begin
+      if (set_a) reg_a <= immediate;
+      if (set_x) reg_x <= immediate;
+      if (set_y) reg_y <= immediate;
     end
   end
 
