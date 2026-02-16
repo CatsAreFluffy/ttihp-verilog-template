@@ -7,10 +7,10 @@
 
 module tt_um_CatsAreFluffy (
     input  wire [7:0] ui_in,    // Dedicated inputs
-    output wire [7:0] uo_out,   // Dedicated outputs
+    output reg  [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: Input path
-    output wire [7:0] uio_out,  // IOs: Output path
-    output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
+    output reg  [7:0] uio_out,  // IOs: Output path
+    output reg  [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
     input  wire       ena,      // always 1 when the design is powered, so you can ignore it
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
@@ -24,13 +24,15 @@ module tt_um_CatsAreFluffy (
   localparam FETCH1_BIT = 0;
   localparam FETCH2_BIT = 1;
   localparam FETCH3_BIT = 2;
+  localparam LOAD_BIT = 3;
 
   localparam FETCH1 = 1 << FETCH1_BIT;
   localparam FETCH2 = 1 << FETCH2_BIT;
   localparam FETCH3 = 1 << FETCH3_BIT;
+  localparam LOAD = 1 << LOAD_BIT;
 
   (* onehot *)
-  reg [2:0] state;
+  reg [3:0] state;
 
   reg [9:0] program_counter;
 
@@ -50,9 +52,35 @@ module tt_um_CatsAreFluffy (
   wire [3:0] immediate = instr_3;
 
   // Control lines
+  wire in2_from_memory = !mode[2];
+
   wire set_a = row[2];
   wire set_x = !row[2] && !row[0] && !column[0];
   wire set_y = !row[2] && !row[0] && column[0];
+
+  reg [3:0] alu_in2;
+
+  reg [3:0] load_buffer;
+
+  // Logic for outputs
+  always @(*) begin
+    case (state)
+      LOAD: begin
+        uo_out = 8'(immediate);
+        uio_out = 8'b01110000;
+        uio_oe = 8'b11110000;
+      end
+      default: begin
+        // Fetch
+        uo_out = program_counter[9:2];
+        uio_out[7:6] = program_counter[1:0];
+        uio_out[5] = state[FETCH3_BIT];
+        uio_out[4] = state[FETCH2_BIT];
+        uio_out[3:0] = 0;
+        uio_oe = 8'b11110000;
+      end
+    endcase
+  end
 
   // Update logic for state
   always @(posedge clk or negedge rst_n) begin
@@ -62,7 +90,14 @@ module tt_um_CatsAreFluffy (
       case (state)
         FETCH1: state <= FETCH2;
         FETCH2: state <= FETCH3;
-        FETCH3: state <= FETCH1;
+        FETCH3: begin
+          if (in2_from_memory) begin
+            state <= LOAD;
+          end else begin
+            state <= FETCH1;
+          end
+        end
+        LOAD: state <= FETCH1;
         default: state <= FETCH1;
       endcase
     end
@@ -84,9 +119,9 @@ module tt_um_CatsAreFluffy (
       reg_x <= 0;
       reg_y <= 0;
     end else if (state == FETCH1) begin
-      if (set_a) reg_a <= immediate;
-      if (set_x) reg_x <= immediate;
-      if (set_y) reg_y <= immediate;
+      if (set_a) reg_a <= alu_in2;
+      if (set_x) reg_x <= alu_in2;
+      if (set_y) reg_y <= alu_in2;
     end
   end
 
@@ -105,13 +140,22 @@ module tt_um_CatsAreFluffy (
     end
   end
 
-  // Set outputs to instruction address
-  assign uo_out = program_counter[9:2];
-  assign uio_out[7:6] = program_counter[1:0];
-  assign uio_out[5] = state[FETCH3_BIT];
-  assign uio_out[4] = state[FETCH2_BIT];
-  assign uio_out[3:0] = 0;
-  assign uio_oe = 8'b11110000;
+  // Logic for alu_in2
+  always @(*) begin
+    case (mode)
+      3'b100: alu_in2 = immediate;
+      default: alu_in2 = load_buffer;
+    endcase
+  end
+
+  // Update logic for load_buffer
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      load_buffer <= 0;
+    end else if (state == LOAD) begin
+      load_buffer <= uio_in[3:0];
+    end
+  end
 
   wire _unused2 = &{reg_a, reg_x, reg_y};
 
@@ -128,7 +172,7 @@ module tt_um_CatsAreFluffy (
   };
 
   wire [8*2*8-1:0] modenames = {
-    "  ", "  ", "  ", "  ", "im", "  ", "  ", "  "
+    "zi", "  ", "  ", "  ", "im", "  ", "  ", "  "
   };
 
   wire [31:0] mnemonic = 32'(mnemonics >> (31 - {row, column})*32);
