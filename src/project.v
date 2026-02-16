@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2024 Your Name
+ * Copyright (c) 2026 CatsAreFluffy
  * SPDX-License-Identifier: Apache-2.0
  */
 
 `default_nettype none
 
-module tt_um_example (
+module tt_um_CatsAreFluffy (
     input  wire [7:0] ui_in,    // Dedicated inputs
     output wire [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: Input path
@@ -16,12 +16,74 @@ module tt_um_example (
     input  wire       rst_n     // reset_n - low to reset
 );
 
-  // All output pins must be assigned. If not used, assign to 0.
-  assign uo_out  = ui_in + uio_in;  // Example: ou_out is the sum of ui_in and uio_in
-  assign uio_out = 0;
-  assign uio_oe  = 0;
-
   // List all unused inputs to prevent warnings
-  wire _unused = &{ena, clk, rst_n, 1'b0};
+  wire _unused = &{ui_in, uio_in[7:4], ena, 1'b0};
+
+
+  // Internal states
+  localparam FETCH1_BIT = 0;
+  localparam FETCH2_BIT = 1;
+  localparam FETCH3_BIT = 2;
+
+  localparam FETCH1 = 1 << FETCH1_BIT;
+  localparam FETCH2 = 1 << FETCH2_BIT;
+  localparam FETCH3 = 1 << FETCH3_BIT;
+
+  (* onehot *)
+  reg [2:0] state;
+
+  reg [9:0] program_counter;
+
+  reg [3:0] instr_1;
+  reg [3:0] instr_2;
+  reg [3:0] instr_3;
+
+  // Update logic for state
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      state <= FETCH1;
+    end else begin
+      case (state)
+        FETCH1: state <= FETCH2;
+        FETCH2: state <= FETCH3;
+        FETCH3: state <= FETCH1;
+        default: state <= FETCH1;
+      endcase
+    end
+  end
+
+  // Update logic for program counter
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      program_counter <= 0;
+    end else if (state == FETCH3) begin
+      program_counter <= program_counter + 1;
+    end
+  end
+
+  // Update logic for instr_*
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      instr_1 <= 0;
+      instr_2 <= 0;
+      instr_3 <= 0;
+    end else begin
+      case (state)
+        FETCH1: instr_1 <= uio_in[3:0];
+        FETCH2: instr_2 <= uio_in[3:0];
+        FETCH3: instr_3 <= uio_in[3:0];
+      endcase
+    end
+  end
+
+  // Set outputs to instruction address
+  assign uo_out = program_counter[9:2];
+  assign uio_out[7:6] = program_counter[1:0];
+  assign uio_out[5] = state[FETCH3_BIT];
+  assign uio_out[4] = state[FETCH2_BIT];
+  assign uio_out[3:0] = 0;
+  assign uio_oe = 8'b11110000;
+
+  wire _unused2 = &{instr_1, instr_2, instr_3};
 
 endmodule

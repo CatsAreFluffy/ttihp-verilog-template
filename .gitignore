@@ -3,6 +3,7 @@
 *.vcd
 *.fst
 *.fst.hier
+pdk
 runs
 tt_submission
 src/user_config.json
