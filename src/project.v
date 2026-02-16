@@ -26,15 +26,17 @@ module tt_um_CatsAreFluffy (
   localparam FETCH3_BIT = 2;
   localparam LOAD_BIT   = 3;
   localparam STORE_BIT  = 4;
+  localparam JUMP_BIT   = 5;
 
   localparam FETCH1 = 1 << FETCH1_BIT;
   localparam FETCH2 = 1 << FETCH2_BIT;
   localparam FETCH3 = 1 << FETCH3_BIT;
   localparam LOAD   = 1 << LOAD_BIT;
   localparam STORE  = 1 << STORE_BIT;
+  localparam JUMP   = 1 << JUMP_BIT;
 
   (* onehot *)
-  reg [4:0] state;
+  reg [5:0] state;
 
   reg [9:0] program_counter;
 
@@ -82,7 +84,7 @@ module tt_um_CatsAreFluffy (
         uio_oe = 8'b11111111;
       end
       default: begin
-        // Fetch
+        // Fetch (or jump)
         uo_out = program_counter[9:2];
         uio_out[7:6] = program_counter[1:0];
         uio_out[5] = state[FETCH3_BIT];
@@ -105,14 +107,14 @@ module tt_um_CatsAreFluffy (
           if (store_instr) begin
             state <= STORE;
           end else if (jump_instr) begin
-            state <= FETCH1;
+            state <= JUMP;
           end else if (in2_from_memory) begin
             state <= LOAD;
           end else begin
             state <= FETCH1;
           end
         end
-        // LOAD and STORE
+        // LOAD, STORE, or JUMP
         default: state <= FETCH1;
       endcase
     end
@@ -120,12 +122,9 @@ module tt_um_CatsAreFluffy (
 
   // Update logic for program counter
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      program_counter <= 0;
-    end else if (state == FETCH3) begin
-      if (jump_instr) program_counter <= {4'b0000, uio_in[3:0], 2'b00};
-      else            program_counter <= program_counter + 1;
-    end
+    if (!rst_n)               program_counter <= 0;
+    else if (state == FETCH3) program_counter <= program_counter + 1;
+    else if (state == JUMP)   program_counter <= {4'b0000, uio_in[3:0], 2'b00};
   end
 
   // Update logic for registers
@@ -220,6 +219,7 @@ module tt_um_CatsAreFluffy (
         FETCH3:  state_string = "FETCH3";
         LOAD:    state_string = "LOAD  ";
         STORE:   state_string = "STORE ";
+        JUMP:    state_string = "JUMP  ";
         default: state_string = "??????";
       endcase
     end
@@ -228,7 +228,7 @@ module tt_um_CatsAreFluffy (
     reg instr_done;
 
     always_comb begin
-      if (jump_instr)       instr_last_cycle = state == FETCH3;
+      if (jump_instr)       instr_last_cycle = state == JUMP;
       else if (store_instr) instr_last_cycle = state == STORE;
       else                  instr_last_cycle = state == FETCH1;
     end
