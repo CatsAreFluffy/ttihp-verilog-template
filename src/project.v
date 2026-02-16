@@ -69,7 +69,7 @@ module tt_um_CatsAreFluffy (
   reg [3:0] load_buffer;
 
   // Logic for outputs
-  always @(*) begin
+  always_comb begin
     case (state)
       LOAD: begin
         uo_out = 8'(immediate);
@@ -94,7 +94,7 @@ module tt_um_CatsAreFluffy (
   end
 
   // Update logic for state
-  always @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       state <= FETCH1;
     end else begin
@@ -119,7 +119,7 @@ module tt_um_CatsAreFluffy (
   end
 
   // Update logic for program counter
-  always @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       program_counter <= 0;
     end else if (state == FETCH3) begin
@@ -129,7 +129,7 @@ module tt_um_CatsAreFluffy (
   end
 
   // Update logic for registers
-  always @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       reg_a <= 0;
       reg_x <= 0;
@@ -142,7 +142,7 @@ module tt_um_CatsAreFluffy (
   end
 
   // Update logic for instr_*
-  always @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       instr_1 <= 0;
       instr_2 <= 0;
@@ -157,14 +157,14 @@ module tt_um_CatsAreFluffy (
   end
 
   // Logic for alu_in1
-  always @(*) begin
+  always_comb begin
     if (row[2]) alu_in1 = reg_a;
     else if(column[0]) alu_in1 = reg_y;
     else alu_in1 = reg_x;
   end
 
   // Logic for alu_in2
-  always @(*) begin
+  always_comb begin
     case (mode)
       3'b100: alu_in2 = immediate;
       default: alu_in2 = load_buffer;
@@ -172,7 +172,7 @@ module tt_um_CatsAreFluffy (
   end
 
   // Update logic for load_buffer
-  always @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       load_buffer <= 0;
     end else if (state == LOAD) begin
@@ -212,7 +212,7 @@ module tt_um_CatsAreFluffy (
 
   reg [6*8-1:0] state_string;
 
-  always @(*) begin
+  always_comb begin
     case (state)
       FETCH1:  state_string = "FETCH1";
       FETCH2:  state_string = "FETCH2";
