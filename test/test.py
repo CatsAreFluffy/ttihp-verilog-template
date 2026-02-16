@@ -8,7 +8,10 @@ from cocotb.triggers import ClockCycles, NextTimeStep, Timer
 # Instructions
 ldx = 0b010_00
 ldy = 0b010_01
+stx = 0b011_00
+sty = 0b011_01
 lda = 0b110_00
+sta = 0b111_00
 # Addressing modes
 zi = 0b000
 im = 0b100
@@ -96,3 +99,14 @@ async def test_project(dut):
     assert dut.user_project.reg_y.value == 4
     for i in range(4): await cycle(dut, rom, ram)
     assert dut.user_project.reg_x.value == 2
+
+    dut._log.info("Test store to memory instructions")
+    rom = assemble([(lda, im, 5), (sta, zi, 0), (ldx, zi, 0), (0, 0, 0)])
+    ram = [0]
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 1)
+    dut.rst_n.value = 1
+    for i in range(3+4+1): await cycle(dut, rom, ram)
+    assert ram[0] == 5
+    for i in range(-1+4+2): await cycle(dut, rom, ram)
+    assert dut.user_project.reg_x.value == 5

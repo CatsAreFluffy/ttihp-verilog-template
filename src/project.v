@@ -25,14 +25,16 @@ module tt_um_CatsAreFluffy (
   localparam FETCH2_BIT = 1;
   localparam FETCH3_BIT = 2;
   localparam LOAD_BIT = 3;
+  localparam STORE_BIT = 4;
 
   localparam FETCH1 = 1 << FETCH1_BIT;
   localparam FETCH2 = 1 << FETCH2_BIT;
   localparam FETCH3 = 1 << FETCH3_BIT;
   localparam LOAD = 1 << LOAD_BIT;
+  localparam STORE = 1 << STORE_BIT;
 
   (* onehot *)
-  reg [3:0] state;
+  reg [4:0] state;
 
   reg [9:0] program_counter;
 
@@ -52,12 +54,15 @@ module tt_um_CatsAreFluffy (
   wire [3:0] immediate = instr_3;
 
   // Control lines
+  wire store_instr = row[1] && row[0] && !column[1];
+
   wire in2_from_memory = !mode[2];
 
   wire set_a = row[2];
   wire set_x = !row[2] && !row[0] && !column[0];
   wire set_y = !row[2] && !row[0] && column[0];
 
+  reg [3:0] alu_in1;
   reg [3:0] alu_in2;
 
   reg [3:0] load_buffer;
@@ -69,6 +74,11 @@ module tt_um_CatsAreFluffy (
         uo_out = 8'(immediate);
         uio_out = 8'b01110000;
         uio_oe = 8'b11110000;
+      end
+      STORE: begin
+        uo_out = 8'(immediate);
+        uio_out = {4'b0011, alu_in1};
+        uio_oe = 8'b11111111;
       end
       default: begin
         // Fetch
@@ -91,7 +101,9 @@ module tt_um_CatsAreFluffy (
         FETCH1: state <= FETCH2;
         FETCH2: state <= FETCH3;
         FETCH3: begin
-          if (in2_from_memory) begin
+          if (store_instr) begin
+            state <= STORE;
+          end else if (in2_from_memory) begin
             state <= LOAD;
           end else begin
             state <= FETCH1;
@@ -140,6 +152,13 @@ module tt_um_CatsAreFluffy (
     end
   end
 
+  // Logic for alu_in1
+  always @(*) begin
+    if (row[2]) alu_in1 = reg_a;
+    else if(column[0]) alu_in1 = reg_y;
+    else alu_in1 = reg_x;
+  end
+
   // Logic for alu_in2
   always @(*) begin
     case (mode)
@@ -157,18 +176,16 @@ module tt_um_CatsAreFluffy (
     end
   end
 
-  wire _unused2 = &{reg_a, reg_x, reg_y};
-
   // Nice things for simulation
   wire [32*4*8-1:0] mnemonics = {
     "    ", "    ", "    ", "    ",
     "    ", "    ", "    ", "    ",
     " ldx", " ldy", "    ", "    ",
-    "    ", "    ", "    ", "    ",
+    " stx", " sty", "    ", "    ",
     "    ", "    ", "    ", "    ",
     "    ", "    ", "    ", "    ",
     " lda", "    ", "    ", "    ",
-    "    ", "    ", "    ", "    "
+    " sta", "    ", "    ", "    "
   };
 
   wire [8*2*8-1:0] modenames = {
