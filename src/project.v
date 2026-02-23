@@ -26,17 +26,15 @@ module tt_um_CatsAreFluffy (
   localparam FETCH3_BIT = 2;
   localparam LOAD_BIT   = 3;
   localparam STORE_BIT  = 4;
-  localparam JUMP_BIT   = 5;
 
   localparam FETCH1 = 1 << FETCH1_BIT;
   localparam FETCH2 = 1 << FETCH2_BIT;
   localparam FETCH3 = 1 << FETCH3_BIT;
   localparam LOAD   = 1 << LOAD_BIT;
   localparam STORE  = 1 << STORE_BIT;
-  localparam JUMP   = 1 << JUMP_BIT;
 
   (* onehot *)
-  reg [5:0] state;
+  reg [4:0] state;
 
   reg [9:0] program_counter;
 
@@ -69,6 +67,7 @@ module tt_um_CatsAreFluffy (
   wire set_y = !row[2] && !row[0] && column[0];
 
   reg [7:0] mem_address;
+  reg [9:0] next_program_counter;
 
   reg [3:0] alu_in1;
   reg [3:0] alu_in2;
@@ -90,9 +89,9 @@ module tt_um_CatsAreFluffy (
         uio_oe = 8'b11111111;
       end
       default: begin
-        // Fetch (or jump)
-        uo_out = program_counter[9:2];
-        uio_out[7:6] = program_counter[1:0];
+        // Fetch
+        uo_out = next_program_counter[9:2];
+        uio_out[7:6] = next_program_counter[1:0];
         uio_out[5] = state[FETCH3_BIT];
         uio_out[4] = state[FETCH2_BIT];
         uio_out[3:0] = 0;
@@ -112,9 +111,7 @@ module tt_um_CatsAreFluffy (
         FETCH3: begin
           if (store_instr) begin
             state <= STORE;
-          end else if (jump_instr) begin
-            state <= JUMP;
-          end else if (in2_from_memory) begin
+          end else if (!jump_instr && in2_from_memory) begin
             state <= LOAD;
           end else begin
             state <= FETCH1;
@@ -129,8 +126,17 @@ module tt_um_CatsAreFluffy (
   // Update logic for program counter
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n)               program_counter <= 0;
-    else if (state == FETCH3) program_counter <= program_counter + 1;
-    else if (state == JUMP)   program_counter <= {mem_address, 2'b00};
+    else if (state == FETCH1) program_counter <= next_program_counter;
+  end
+
+  // Update logic for next_program_counter
+  always_comb begin
+    if (state == FETCH1) begin
+      if (jump_instr) next_program_counter = {mem_address, 2'b00};
+      else            next_program_counter = program_counter + 1;
+    end else begin
+      next_program_counter = program_counter;
+    end
   end
 
   // Update logic for registers
@@ -242,18 +248,22 @@ module tt_um_CatsAreFluffy (
         FETCH3:  state_string = "FETCH3";
         LOAD:    state_string = "LOAD  ";
         STORE:   state_string = "STORE ";
-        JUMP:    state_string = "JUMP  ";
         default: state_string = "??????";
       endcase
     end
 
+    reg just_reset;
     reg instr_last_cycle;
     reg instr_done;
 
+    always_ff @(posedge clk or negedge rst_n) begin
+      if (!rst_n) just_reset <= 1;
+      else        just_reset <= 0;
+    end
+
     always_comb begin
-      if (jump_instr)       instr_last_cycle = state == JUMP;
-      else if (store_instr) instr_last_cycle = state == STORE;
-      else                  instr_last_cycle = state == FETCH1;
+      if (store_instr) instr_last_cycle = state == STORE;
+      else             instr_last_cycle = (state == FETCH1) && !just_reset;
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
