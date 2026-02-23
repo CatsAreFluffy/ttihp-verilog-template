@@ -43,6 +43,12 @@ module tt_um_CatsAreFluffy (
   reg [3:0] reg_x;
   reg [3:0] reg_y;
 
+  // Flags
+  reg zero_flag;
+  reg sign_flag;
+  reg carry_flag;
+
+  // Current instruction
   reg [3:0] instr_1;
   reg [3:0] instr_2;
 
@@ -54,6 +60,7 @@ module tt_um_CatsAreFluffy (
   // Control lines
   wire jump_instr = !row[2] && !row[1];
   wire store_instr = row[1] && row[0] && !column[1];
+  wire other_instr = !jump_instr && !store_instr;
 
   wire in2_from_memory = !mode[2];
 
@@ -63,12 +70,15 @@ module tt_um_CatsAreFluffy (
   wire set_a = row[2];
   wire set_x = !row[2] && !row[0] && !column[0];
   wire set_y = !row[2] && !row[0] && column[0];
+  wire set_carry = row[2] && column[1];
 
+  // Temporary data
   reg [7:0] mem_address;
   reg [9:0] next_program_counter;
 
   reg [3:0] alu_in1;
   reg [3:0] alu_in2;
+  reg [4:0] alu_sum;
   reg [3:0] alu_out;
 
   reg [3:0] load_buffer;
@@ -146,6 +156,19 @@ module tt_um_CatsAreFluffy (
     end
   end
 
+  // Update logic for flags
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      zero_flag  <= 0;
+      sign_flag  <= 0;
+      carry_flag <= 0;
+    end else if (state == FETCH1) begin
+      if (other_instr) zero_flag  <= (alu_out == 0);
+      if (other_instr) sign_flag  <= alu_out[3];
+      if (set_carry)   carry_flag <= alu_sum[4];
+    end
+  end
+
   // Update logic for instr_*
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -181,11 +204,15 @@ module tt_um_CatsAreFluffy (
     alu_in2 = load_buffer;
   end
 
+  // Logic for alu_sum
+  always_comb begin
+    alu_sum = {1'b0, alu_in1} + {1'b0, alu_subtract ? ~alu_in2 : alu_in2} + {4'b0, alu_subtract};
+  end
+
   // Logic for alu_out
   always_comb begin
-    if (alu_skip)          alu_out = alu_in2;
-    else if (alu_subtract) alu_out = alu_in1 - alu_in2;
-    else                   alu_out = alu_in1 + alu_in2;
+    if (alu_skip) alu_out = alu_in2;
+    else          alu_out = alu_sum[3:0];
   end
 
   // Update logic for load_buffer
@@ -193,6 +220,8 @@ module tt_um_CatsAreFluffy (
     if (!rst_n) load_buffer <= 0;
     else        load_buffer <= uio_in[3:0];
   end
+
+  wire _unused2 = &{zero_flag, sign_flag, carry_flag};
 
   // Nice things for simulation
   `ifndef SYNTHESIS

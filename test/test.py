@@ -161,3 +161,29 @@ async def test_project(dut):
     assert dut.user_project.reg_a.value == 8
     for i in range(2): await next_instruction(dut, rom, ram)
     assert dut.user_project.reg_a.value == 2
+
+    dut._log.info("Test flags")
+    rom = assemble([(lda, im, 1), (adda, im, 2), (lda, im, 3), (adda, im, 5), (lda, im, 10), (adda, im, 10), (lda, im, 3), (suba, im, 3), (lda, im, 2), (suba, im, 3), (0, 0, 0)])
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 1)
+    dut.rst_n.value = 1
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.zero_flag.value == 0
+    assert dut.user_project.sign_flag.value == 0
+    assert dut.user_project.carry_flag.value == 0
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.zero_flag.value == 0
+    assert dut.user_project.sign_flag.value == 1
+    assert dut.user_project.carry_flag.value == 0
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.zero_flag.value == 0
+    assert dut.user_project.sign_flag.value == 0
+    assert dut.user_project.carry_flag.value == 1
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.zero_flag.value == 1
+    assert dut.user_project.sign_flag.value == 0
+    assert dut.user_project.carry_flag.value == 1
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.zero_flag.value == 0
+    assert dut.user_project.sign_flag.value == 1
+    assert dut.user_project.carry_flag.value == 0
