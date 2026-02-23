@@ -45,13 +45,11 @@ module tt_um_CatsAreFluffy (
 
   reg [3:0] instr_1;
   reg [3:0] instr_2;
-  reg [3:0] instr_3;
 
   // Instruction fields
   wire [2:0] mode = instr_1[2:0];
   wire [1:0] column = {instr_2[0], instr_1[3]};
   wire [2:0] row = instr_2[3:1];
-  wire [3:0] immediate = instr_3;
 
   // Control lines
   wire jump_instr = !row[2] && !row[1];
@@ -157,12 +155,10 @@ module tt_um_CatsAreFluffy (
     if (!rst_n) begin
       instr_1 <= 0;
       instr_2 <= 0;
-      instr_3 <= 0;
     end else begin
       case (state)
         FETCH1: instr_1 <= uio_in[3:0];
         FETCH2: instr_2 <= uio_in[3:0];
-        FETCH3: instr_3 <= uio_in[3:0];
       endcase
     end
   end
@@ -170,10 +166,10 @@ module tt_um_CatsAreFluffy (
   // Logic for mem_address
   always_comb begin
     case (mode[1:0])
-      2'b00: mem_address = {4'b0000,   immediate};
-      2'b01: mem_address = {immediate, reg_x};
-      2'b10: mem_address = {reg_y,     immediate};
-      2'b11: mem_address = {reg_y,     reg_x};
+      2'b00: mem_address = {4'b0000,    load_buffer};
+      2'b01: mem_address = {load_buffer, reg_x};
+      2'b10: mem_address = {reg_y,      load_buffer};
+      2'b11: mem_address = {reg_y,      reg_x};
     endcase
   end
 
@@ -186,10 +182,7 @@ module tt_um_CatsAreFluffy (
 
   // Logic for alu_in2
   always_comb begin
-    case (mode)
-      3'b100:  alu_in2 = immediate;
-      default: alu_in2 = load_buffer;
-    endcase
+    alu_in2 = load_buffer;
   end
 
   // Logic for alu_out
@@ -201,11 +194,8 @@ module tt_um_CatsAreFluffy (
 
   // Update logic for load_buffer
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      load_buffer <= 0;
-    end else if (state == LOAD) begin
-      load_buffer <= uio_in[3:0];
-    end
+    if (!rst_n)   load_buffer <= 0;
+    else          load_buffer <= uio_in[3:0];
   end
 
   // Nice things for simulation

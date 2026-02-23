@@ -83,11 +83,11 @@ async def test_project(dut):
     for i in range(4): await cycle(dut, rom)
     assert dut.user_project.instr_1.value == 4
     assert dut.user_project.instr_2.value == 12
-    assert dut.user_project.instr_3.value == 8
+    assert dut.user_project.load_buffer.value == 8
     for i in range(3): await cycle(dut, rom)
     assert dut.user_project.instr_1.value == 5
     assert dut.user_project.instr_2.value == 7
-    assert dut.user_project.instr_3.value == 9
+    assert dut.user_project.load_buffer.value == 9
 
     dut._log.info("Test load immediate instructions")
     rom = assemble([(lda, im, 1), (ldx, im, 2), (ldy, im, 3), (0, 0, 0)])
