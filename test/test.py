@@ -6,9 +6,18 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, NextTimeStep, Timer
 
 # Instructions
+nop  = 0b000_00
+jz   = 0b000_01
+js   = 0b000_10
+jc   = 0b000_11
 jmp  = 0b001_00
+jnz  = 0b001_01
+jns  = 0b001_10
+jnc  = 0b001_11
 ldx  = 0b010_00
 ldy  = 0b010_01
+addx = 0b010_10
+addy = 0b010_11
 stx  = 0b011_00
 sty  = 0b011_01
 lda  = 0b110_00
@@ -187,3 +196,13 @@ async def test_project(dut):
     assert dut.user_project.zero_flag.value == 0
     assert dut.user_project.sign_flag.value == 1
     assert dut.user_project.carry_flag.value == 0
+
+    dut._log.info("Test branches")
+    rom = assemble([(lda, im, 0), (ldx, im, 3), (nop, zi, 0), (nop, zi, 0), (adda, im, 2), (addx, im, 15), (jnz, zi, 1), (0, 0, 0)])
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 1)
+    dut.rst_n.value = 1
+    for i in range(4+3): await next_instruction(dut, rom, ram)
+    assert dut.user_project.program_counter.value == 4
+    for i in range(3*2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.program_counter.value == 7

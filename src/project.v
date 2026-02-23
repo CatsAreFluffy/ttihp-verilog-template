@@ -68,12 +68,14 @@ module tt_um_CatsAreFluffy (
   wire alu_subtract = row[0];
 
   wire set_a = row[2];
-  wire set_x = !row[2] && !row[0] && !column[0];
-  wire set_y = !row[2] && !row[0] && column[0];
+  wire set_x = !row[2] && row[1] && !row[0] && !column[0];
+  wire set_y = !row[2] && row[1] && !row[0] && column[0];
   wire set_carry = row[2] && column[1];
 
   // Temporary data
   reg [7:0] mem_address;
+
+  reg jump_condition;
   reg [9:0] next_program_counter;
 
   reg [3:0] alu_in1;
@@ -129,15 +131,15 @@ module tt_um_CatsAreFluffy (
 
   // Update logic for program_counter
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n)               program_counter <= 0;
+    if (!rst_n)               program_counter <= 10'h3ff;
     else if (state == FETCH1) program_counter <= next_program_counter;
   end
 
   // Logic for next_program_counter
   always_comb begin
     if (state == FETCH1) begin
-      if (jump_instr) next_program_counter = {mem_address, 2'b00};
-      else            next_program_counter = program_counter + 1;
+      if (jump_condition) next_program_counter = {mem_address, 2'b00};
+      else                next_program_counter = program_counter + 1;
     end else begin
       next_program_counter = program_counter;
     end
@@ -192,6 +194,17 @@ module tt_um_CatsAreFluffy (
     endcase
   end
 
+  // Logic for jump_condition
+  always_comb begin
+    if (!jump_instr) jump_condition = 0;
+    else case (column)
+      2'b00: jump_condition = row[0];
+      2'b01: jump_condition = row[0] ^ zero_flag;
+      2'b10: jump_condition = row[0] ^ sign_flag;
+      2'b11: jump_condition = row[0] ^ carry_flag;
+    endcase
+  end
+
   // Logic for alu_in1
   always_comb begin
     if (row[2])         alu_in1 = reg_a;
@@ -221,13 +234,11 @@ module tt_um_CatsAreFluffy (
     else        load_buffer <= uio_in[3:0];
   end
 
-  wire _unused2 = &{zero_flag, sign_flag, carry_flag};
-
   // Nice things for simulation
   `ifndef SYNTHESIS
     wire [32*4*8-1:0] mnemonics = {
-      "    ", "    ", "    ", "    ",
-      " jmp", "    ", "    ", "    ",
+      " nop", "  jz", "  js", "  jc",
+      " jmp", " jnz", " jns", " jnc",
       " ldx", " ldy", "addx", "addy",
       " stx", " sty", "    ", "    ",
       "    ", "    ", "    ", "    ",
