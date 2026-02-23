@@ -61,6 +61,9 @@ module tt_um_CatsAreFluffy (
 
   wire in2_from_memory = !mode[2];
 
+  wire alu_skip = !column[1];
+  wire alu_subtract = row[0];
+
   wire set_a = row[2];
   wire set_x = !row[2] && !row[0] && !column[0];
   wire set_y = !row[2] && !row[0] && column[0];
@@ -69,6 +72,7 @@ module tt_um_CatsAreFluffy (
 
   reg [3:0] alu_in1;
   reg [3:0] alu_in2;
+  reg [3:0] alu_out;
 
   reg [3:0] load_buffer;
 
@@ -136,9 +140,9 @@ module tt_um_CatsAreFluffy (
       reg_x <= 0;
       reg_y <= 0;
     end else if (state == FETCH1) begin
-      if (set_a) reg_a <= alu_in2;
-      if (set_x) reg_x <= alu_in2;
-      if (set_y) reg_y <= alu_in2;
+      if (set_a) reg_a <= alu_out;
+      if (set_x) reg_x <= alu_out;
+      if (set_y) reg_y <= alu_out;
     end
   end
 
@@ -182,6 +186,13 @@ module tt_um_CatsAreFluffy (
     endcase
   end
 
+  // Logic for alu_out
+  always_comb begin
+    if (alu_skip)          alu_out = alu_in2;
+    else if (alu_subtract) alu_out = alu_in1 - alu_in2;
+    else                   alu_out = alu_in1 + alu_in2;
+  end
+
   // Update logic for load_buffer
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -196,12 +207,12 @@ module tt_um_CatsAreFluffy (
     wire [32*4*8-1:0] mnemonics = {
       "    ", "    ", "    ", "    ",
       " jmp", "    ", "    ", "    ",
-      " ldx", " ldy", "    ", "    ",
+      " ldx", " ldy", "addx", "addy",
       " stx", " sty", "    ", "    ",
       "    ", "    ", "    ", "    ",
       "    ", "    ", "    ", "    ",
-      " lda", "    ", "    ", "    ",
-      " sta", "    ", "    ", "    "
+      " lda", "    ", "adda", "    ",
+      " sta", "    ", "suba", "    "
     };
 
     wire [8*2*8-1:0] modenames = {

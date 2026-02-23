@@ -6,13 +6,15 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, NextTimeStep, Timer
 
 # Instructions
-jmp = 0b001_00
-ldx = 0b010_00
-ldy = 0b010_01
-stx = 0b011_00
-sty = 0b011_01
-lda = 0b110_00
-sta = 0b111_00
+jmp  = 0b001_00
+ldx  = 0b010_00
+ldy  = 0b010_01
+stx  = 0b011_00
+sty  = 0b011_01
+lda  = 0b110_00
+adda = 0b110_10
+sta  = 0b111_00
+suba = 0b111_10
 # Addressing modes
 zi = 0b000
 ix = 0b001
@@ -149,3 +151,13 @@ async def test_project(dut):
     assert dut.user_project.reg_a.value == 2
     await next_instruction(dut, rom, ram)
     assert dut.user_project.reg_a.value == 3
+
+    dut._log.info("Test addition and subtraction")
+    rom = assemble([(lda, im, 5), (adda, im, 3), (lda, im, 5), (suba, im, 3), (0, 0, 0)])
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 1)
+    dut.rst_n.value = 1
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.reg_a.value == 8
+    for i in range(2): await next_instruction(dut, rom, ram)
+    assert dut.user_project.reg_a.value == 2
