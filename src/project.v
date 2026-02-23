@@ -107,27 +107,23 @@ module tt_um_CatsAreFluffy (
         FETCH1: state <= FETCH2;
         FETCH2: state <= FETCH3;
         FETCH3: begin
-          if (store_instr) begin
-            state <= STORE;
-          end else if (!jump_instr && in2_from_memory) begin
-            state <= LOAD;
-          end else begin
-            state <= FETCH1;
-          end
+          if (store_instr)                         state <= STORE;
+          else if (!jump_instr && in2_from_memory) state <= LOAD;
+          else                                     state <= FETCH1;
         end
-        // LOAD, STORE, or JUMP
+        // LOAD or STORE
         default: state <= FETCH1;
       endcase
     end
   end
 
-  // Update logic for program counter
+  // Update logic for program_counter
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n)               program_counter <= 0;
     else if (state == FETCH1) program_counter <= next_program_counter;
   end
 
-  // Update logic for next_program_counter
+  // Logic for next_program_counter
   always_comb begin
     if (state == FETCH1) begin
       if (jump_instr) next_program_counter = {mem_address, 2'b00};
@@ -166,18 +162,18 @@ module tt_um_CatsAreFluffy (
   // Logic for mem_address
   always_comb begin
     case (mode[1:0])
-      2'b00: mem_address = {4'b0000,    load_buffer};
+      2'b00: mem_address = {4'b0000,     load_buffer};
       2'b01: mem_address = {load_buffer, reg_x};
-      2'b10: mem_address = {reg_y,      load_buffer};
-      2'b11: mem_address = {reg_y,      reg_x};
+      2'b10: mem_address = {reg_y,       load_buffer};
+      2'b11: mem_address = {reg_y,       reg_x};
     endcase
   end
 
   // Logic for alu_in1
   always_comb begin
-    if (row[2])        alu_in1 = reg_a;
-    else if(column[0]) alu_in1 = reg_y;
-    else               alu_in1 = reg_x;
+    if (row[2])         alu_in1 = reg_a;
+    else if (column[0]) alu_in1 = reg_y;
+    else                alu_in1 = reg_x;
   end
 
   // Logic for alu_in2
@@ -194,8 +190,8 @@ module tt_um_CatsAreFluffy (
 
   // Update logic for load_buffer
   always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n)   load_buffer <= 0;
-    else          load_buffer <= uio_in[3:0];
+    if (!rst_n) load_buffer <= 0;
+    else        load_buffer <= uio_in[3:0];
   end
 
   // Nice things for simulation
@@ -224,9 +220,7 @@ module tt_um_CatsAreFluffy (
     reg [(4+1+2+1+1)*8-1:0] instr_string;
 
     always_latch begin
-      if (state == FETCH3) begin
-        instr_string = {mnemonic, " ", modename, " ", immediate_string};
-      end
+      if (state == FETCH3) instr_string = {mnemonic, " ", modename, " ", immediate_string};
     end
 
     reg [6*8-1:0] state_string;
@@ -257,11 +251,8 @@ module tt_um_CatsAreFluffy (
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
-      if (!rst_n) begin
-        instr_done <= 0;
-      end else begin
-        instr_done <= instr_last_cycle;
-      end
+      if (!rst_n) instr_done <= 0;
+      else        instr_done <= instr_last_cycle;
     end
 
     wire _unused_sim_only = &{instr_string, state_string, instr_done};
